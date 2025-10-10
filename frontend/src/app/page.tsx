@@ -47,12 +47,12 @@ export default function Home() {
             >
               Sign Up
             </Link>
-            <a
-              href="#"
+            <Link
+              href="/signout"
               className="hover:text-cyan-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md px-1"
             >
               Sign Out
-            </a>
+            </Link>
           </div>
         </nav>
       </header>
