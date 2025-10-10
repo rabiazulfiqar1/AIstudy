@@ -23,6 +23,11 @@ export default function SignOutPage() {
   }
 
   return (
+    <div className="relative w-full min-h-screen overflow-hidden flex flex-col items-center justify-center px-4 py-12">
+      {/* Background */}
+      <div className="absolute inset-0 -z-10 pointer-events-none bg-gradient-to-b from-[#0a0a10] via-[#0b1c24] to-[#0a0a10]">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,255,255,0.08)_0%,transparent_60%)]" />
+      </div>
     <main className="min-h-screen w-full flex items-center justify-center px-4">
       {/* Main Sign-out Card */}
       <div className="w-full max-w-md relative">
@@ -66,5 +71,6 @@ export default function SignOutPage() {
       {/* Dialog opens by default for a focused confirmation UX */}
       <SignOutDialog open={open} onOpenChange={setOpen} onConfirm={handleConfirm} />
     </main>
+    </div>
   )
 }
