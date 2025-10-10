@@ -1,5 +1,6 @@
 import LightRays from "@/components/LightRays"
 import { FeatureCards } from "@/components/feature-cards"
+import Link from "next/link"
 
 export default function Home() {
   return (
@@ -29,26 +30,26 @@ export default function Home() {
           <div className="flex gap-6 text-background/80">
             <a
               href="#"
-              className="hover:text-foreground transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md px-1"
+              className="hover:text-cyan-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md px-1"
             >
               Home
               <span className="sr-only">{"current page"}</span>
             </a>
             <a
               href="#"
-              className="hover:text-foreground transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md px-1"
+              className="hover:text-cyan-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md px-1"
             >
               Features
             </a>
-            <a
-              href="#"
-              className="hover:text-foreground transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md px-1"
+            <Link
+              href="/signup"
+              className="hover:text-cyan-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md px-1"
             >
               Sign Up
-            </a>
+            </Link>
             <a
               href="#"
-              className="hover:text-foreground transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md px-1"
+              className="hover:text-cyan-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md px-1"
             >
               Sign Out
             </a>
