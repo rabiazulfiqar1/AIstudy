@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Mail, Lock } from "lucide-react"
+import { supabase } from "@/lib/supabaseClient"
+import { useRouter } from "next/navigation"
 
 export function LoginDialog({
   open,
@@ -21,9 +23,11 @@ export function LoginDialog({
   open: boolean
   onOpenChange: (v: boolean) => void
 }) {
+  const router = useRouter()
   const [submitting, setSubmitting] = React.useState(false)
 
   async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
+    
     e.preventDefault()
     setSubmitting(true)
     const form = new FormData(e.currentTarget)
@@ -31,11 +35,21 @@ export function LoginDialog({
       email: String(form.get("email") || ""),
       password: String(form.get("password") || ""),
     }
-    // TODO: Replace with real login action/integration
-    console.log("[v0] Login payload:", payload)
-    await new Promise((r) => setTimeout(r, 500))
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: payload.email,
+      password: payload.password,
+    })
+
+    if (error) {
+      console.error("Login failed:", error.message)
+      alert("Login failed: " + error.message)
+    } else {
+      console.log("Login successful:", data)
+      alert("Welcome back!")
+      onOpenChange(false)
+    }
+    router.push("/")
     setSubmitting(false)
-    onOpenChange(false)
   }
 
   return (

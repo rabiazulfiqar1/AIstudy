@@ -7,33 +7,83 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Github, Mail, Phone, School, User, Lock, BookUser } from "lucide-react"
 import { LoginDialog } from "@/components/login-dialog"
+import { useRouter } from "next/navigation"
+
+import { supabase } from "@/lib/supabaseClient"
 
 export function SignupForm() {
+  const router = useRouter()
   const [loginOpen, setLoginOpen] = React.useState(false)
   const [submitting, setSubmitting] = React.useState(false)
+
+  function getValue(form: FormData, key: string) {
+    const val = form.get(key)
+    if (!val || String(val).trim() === "") return null
+    return String(val)
+  }
 
   async function handleSignup(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setSubmitting(true)
     const form = new FormData(e.currentTarget)
     const payload = {
-      fullName: String(form.get("fullName") || ""),
-      university: String(form.get("university") || ""),
-      degree: String(form.get("degree") || ""),
-      username: String(form.get("username") || ""),
+      fullName: getValue(form, "fullName"),
+      university: getValue(form, "university"),
+      degree: getValue(form, "degree"),
+      username: getValue(form, "username"),
       email: String(form.get("email") || ""),
       password: String(form.get("password") || ""),
-      phone: String(form.get("phone") || ""),
+      phone: getValue(form, "phone"),
     }
-    // TODO: Replace with real sign-up action/integration (e.g., Supabase or your API)
-    console.log("[v0] Signup payload:", payload)
-    // Simulate latency
-    await new Promise((r) => setTimeout(r, 600))
+
+    const { data, error } = await supabase.auth.signUp({
+      email: payload.email,
+      password: payload.password,
+      options: {
+        data: {
+          full_name: payload.fullName,
+          university: payload.university,
+          degree: payload.degree,
+          username: payload.username,
+          phone: payload.phone,
+        },
+      },
+    })
+
+    if (error) {
+      console.error("Signup failed:", error.message)
+      alert("Signup failed: " + error.message)
+      setSubmitting(false)
+      return
+    }
+
+    // Step 2: Also insert into your custom public.users table
+    const user = data.user
+    if (user) {
+      const { error: insertError } = await supabase.from("users").insert({
+        id: user.id, // same as auth.users id (UUID)
+        username: payload.username,
+        full_name: payload.fullName,
+        university: payload.university,
+        degree: payload.degree,
+        phone: payload.phone,
+        profile_pic: null,
+      })
+
+      if (insertError) {
+          console.error("Error saving user data:", insertError.message)
+      } else {
+          console.log("User data saved successfully in public.users")
+      }
+    }
+
+    router.push("/")
     setSubmitting(false)
   }
 
-  function handleOauth(provider: "google" | "github") {
-    // TODO: Wire up to your OAuth route/SDK (e.g., Supabase auth, NextAuth, etc.)
+  async function handleOauth(provider: "google" | "github") {
+    const { data, error } = await supabase.auth.signInWithOAuth({ provider })
+    if (error) console.error(error.message)
     console.log("[v0] OAuth clicked:", provider)
   }
 
@@ -114,7 +164,6 @@ export function SignupForm() {
                 id="university"
                 name="university"
                 placeholder="University of Example"
-                required
                 className="pl-9"
                 autoComplete="organization"
               />
@@ -128,7 +177,6 @@ export function SignupForm() {
                 id="degree"
                 name="degree"
                 placeholder="Computer Science"
-                required
                 className="pl-9"
                 autoComplete="education"
               />

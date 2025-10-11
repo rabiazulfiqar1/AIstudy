@@ -10,6 +10,8 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 
+import { supabase } from "@/lib/supabaseClient"
+
 type SignOutDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -41,8 +43,9 @@ export function SignOutDialog({ open, onOpenChange, onConfirm }: SignOutDialogPr
           <Button
             className="bg-foreground text-background hover:opacity-90"
             onClick={async () => {
-              await onConfirm?.()
+              await supabase.auth.signOut()
               onOpenChange(false)
+              alert("Signed out successfully.")
             }}
           >
             Sign out
