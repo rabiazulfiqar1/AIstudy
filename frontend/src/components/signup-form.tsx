@@ -15,6 +15,7 @@ export function SignupForm() {
   const router = useRouter()
   const [loginOpen, setLoginOpen] = React.useState(false)
   const [submitting, setSubmitting] = React.useState(false)
+  const [passwordError, setPasswordError] = React.useState("")
 
   function getValue(form: FormData, key: string) {
     const val = form.get(key)
@@ -28,13 +29,21 @@ export function SignupForm() {
     const form = new FormData(e.currentTarget)
     const payload = {
       fullName: getValue(form, "fullName"),
-      university: getValue(form, "university"),
-      degree: getValue(form, "degree"),
+      organization: getValue(form, "organization"),
+      fieldOfStudy: getValue(form, "fieldOfStudy"),
       username: getValue(form, "username"),
       email: String(form.get("email") || ""),
       password: String(form.get("password") || ""),
+      confirmPassword: String(form.get("confirmPassword") || ""),
       phone: getValue(form, "phone"),
     }
+
+    if (payload.password !== payload.confirmPassword) {
+      setPasswordError("Passwords do not match")
+      setSubmitting(false)
+      return
+    }
+
 
     const { data, error } = await supabase.auth.signUp({
       email: payload.email,
@@ -42,8 +51,8 @@ export function SignupForm() {
       options: {
         data: {
           full_name: payload.fullName,
-          university: payload.university,
-          degree: payload.degree,
+          organization: payload.organization,
+          field_of_study: payload.fieldOfStudy,
           username: payload.username,
           phone: payload.phone,
         },
@@ -61,22 +70,25 @@ export function SignupForm() {
     const user = data.user
     if (user) {
       const { error: insertError } = await supabase.from("users").insert({
-        id: user.id, // same as auth.users id (UUID)
+        user_id: user.id, // same as auth.users id (UUID)
+        email: payload.email,
         username: payload.username,
         full_name: payload.fullName,
-        university: payload.university,
-        degree: payload.degree,
+        organization: payload.organization,
+        field_of_study: payload.fieldOfStudy,
         phone: payload.phone,
         profile_pic: null,
       })
 
       if (insertError) {
-          console.error("Error saving user data:", insertError.message)
-      } else {
-          console.log("User data saved successfully in public.users")
+        console.error("Error saving user data:", insertError.message)
+        alert("There was a problem saving your account. Please try again.")
+        setSubmitting(false)
+        return // stay on signup page
       }
     }
 
+    console.log("User data saved successfully in public.users")
     router.push("/")
     setSubmitting(false)
   }
@@ -132,7 +144,7 @@ export function SignupForm() {
               <Input
                 id="fullName"
                 name="fullName"
-                placeholder="Ada Lovelace"
+                placeholder="Rabia Zulfiqar"
                 required
                 className="pl-9"
                 autoComplete="name"
@@ -157,12 +169,12 @@ export function SignupForm() {
 
         <div className="grid md:grid-cols-2 gap-4">
           <div className="grid gap-2">
-            <Label htmlFor="university">University / School</Label>
+            <Label htmlFor="organization">University / School</Label>
             <div className="relative">
               <School className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground/60" aria-hidden />
               <Input
-                id="university"
-                name="university"
+                id="organization"
+                name="organization"
                 placeholder="University of Example"
                 className="pl-9"
                 autoComplete="organization"
@@ -170,12 +182,12 @@ export function SignupForm() {
             </div>
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="degree">Degree / Field of study</Label>
+            <Label htmlFor="fieldOfStudy">Degree / Field of study</Label>
             <div className="relative">
               <BookUser className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground/60" aria-hidden />
               <Input
-                id="degree"
-                name="degree"
+                id="fieldOfStudy"
+                name="fieldOfStudy"
                 placeholder="Computer Science"
                 className="pl-9"
                 autoComplete="education"
@@ -219,10 +231,25 @@ export function SignupForm() {
         <div className="grid gap-2">
           <Label htmlFor="password">Password</Label>
           <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground/60" aria-hidden />
+            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground/60" />
             <Input
               id="password"
               name="password"
+              type="password"
+              placeholder="••••••••"
+              className="pl-9"
+              required
+            />
+          </div>
+        </div>
+
+        <div className="grid gap-2">
+          <Label htmlFor="confirmPassword">Confirm Password</Label>
+          <div className="relative">
+            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground/60" aria-hidden />
+            <Input
+              id="confirmPassword"
+              name="confirmPassword"
               type="password"
               placeholder="••••••••"
               required
@@ -232,6 +259,8 @@ export function SignupForm() {
             />
           </div>
         </div>
+
+        {passwordError && <p className="text-sm text-red-500">{passwordError}</p>}
 
         <div className="flex flex-col md:flex-row md:items-center gap-4 md:justify-between">
           <p className="text-sm text-foreground/70">
