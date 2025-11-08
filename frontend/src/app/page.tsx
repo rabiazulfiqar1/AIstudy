@@ -36,6 +36,13 @@ export default function Home() {
               <span className="sr-only">{"current page"}</span>
             </a>
             <a
+              href="/notes"
+              className="hover:text-cyan-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md px-1"
+            >
+              Upload
+              <span className="sr-only">{"current page"}</span>
+            </a>
+            <a
               href="#"
               className="hover:text-cyan-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md px-1"
             >

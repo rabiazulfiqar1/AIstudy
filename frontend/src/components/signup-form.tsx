@@ -220,9 +220,14 @@ export function SignupForm() {
                 id="phone"
                 name="phone"
                 type="tel"
-                placeholder="+1 555 555 5555"
+                placeholder="03316061234"
                 className="pl-9"
                 autoComplete="tel"
+                inputMode="numeric"
+                pattern="^0\\d{10}$"
+                minLength={11}
+                maxLength={11}
+                title="Phone number must start with 0 and be exactly 11 digits (e.g. 03316061234)"
               />
             </div>
           </div>

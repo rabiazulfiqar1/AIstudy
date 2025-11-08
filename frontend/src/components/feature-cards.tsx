@@ -72,7 +72,7 @@ const features: Feature[] = [
     description: "Summarize, take notes, translate, and extract transcripts from any video.",
     points: ["Summarization", "Auto-notes", "Translation", "Transcript export"],
     cta: "Open Video Tools",
-    href: "#video",
+    href: "/notes",
     Icon: icons.Video,
   },
   {
