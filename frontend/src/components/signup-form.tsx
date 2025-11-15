@@ -94,7 +94,10 @@ export function SignupForm() {
   }
 
   async function handleOauth(provider: "google" | "github") {
-    const { data, error } = await supabase.auth.signInWithOAuth({ provider })
+    const { data, error } = await supabase.auth.signInWithOAuth({ 
+      provider ,
+      options: {redirectTo: window.location.origin }
+    })
     if (error) console.error(error.message)
     console.log("[v0] OAuth clicked:", provider)
   }

@@ -1,8 +1,41 @@
+"use client";
+import {useEffect, useState} from "react";
+import {supabase} from "@/lib/supabaseClient";
+import type {User} from "@supabase/supabase-js";
 import LightRays from "@/components/LightRays"
 import { FeatureCards } from "@/components/feature-cards"
 import Link from "next/link"
 
 export default function Home() {
+
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    const getUser = async () => {
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.getSession();
+
+      if (error) {
+        console.error("Error fetching session:", error.message);
+        return;
+      }
+
+      setUser(session?.user ?? null);
+    };
+
+    getUser();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   return (
     <div className="relative w-full min-h-screen overflow-hidden flex flex-col items-center justify-center">
       {/* 🩵 Background with Light Rays */}
@@ -48,12 +81,28 @@ export default function Home() {
             >
               Features
             </a>
-            <Link
+            {user ? (
+              <div className="bg-blue-600 text-white w-10 h-10 flex items-center justify-center rounded-full font-bold cursor-pointer">
+                {user.user_metadata?.display_name
+                  ? user.user_metadata.display_name.charAt(0).toUpperCase()
+                  : user.user_metadata?.name
+                  ? user.user_metadata.name.charAt(0).toUpperCase()
+                  : user.email?.charAt(0).toUpperCase() ?? ""}
+              </div>
+            ) : (
+              <Link
+                href="/signup"
+                className="hover:text-cyan-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md px-1"
+              >
+                Sign Up
+              </Link>
+            )}
+            {/* <Link
               href="/signup"
               className="hover:text-cyan-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md px-1"
             >
               Sign Up
-            </Link>
+            </Link> */}
             <Link
               href="/signout"
               className="hover:text-cyan-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md px-1"
