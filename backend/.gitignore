@@ -46,3 +46,9 @@ next-env.d.ts
 #compiled python bytecode files
 *.pyc
 __pycache__/
+
+#cached files
+cache/
+
+#rs file due to token
+rs.py

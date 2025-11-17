@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     SUPABASE_SERVICE_ROLE_KEY: Optional[str] = None
     GROQ_API_KEY: Optional[str] = None
     HF_TOKEN: str | None = None 
+    NEXT_PUBLIC_SUPABASE_URL: Optional[str] = None
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: Optional[str] = None
 
     # This is the modern syntax for Pydantic V2
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding='utf-8')
