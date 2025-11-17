@@ -53,7 +53,7 @@ export default function UploadPage() {
             Transform Your Videos
           </h1>
           <p className="mx-auto max-w-2xl text-background/80 mb-12 leading-relaxed text-center">
-            Upload a video or paste a link to instantly get transcripts and summaries powered by AI.
+            Upload a video or paste a link to instantly get transcripts, summaries, and notes powered by AI.
           </p>
 
           {/* Video Upload Form */}

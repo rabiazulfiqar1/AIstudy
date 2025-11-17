@@ -1,14 +1,20 @@
 "use client"
 
 import { useState, type ChangeEvent, type FormEvent, type DragEvent } from "react"
-import { Download, Loader2, Upload } from "lucide-react"
+import { Download, Loader2, Upload } from 'lucide-react'
 
 interface TranscriptResponse {
-  transcript: string
+  segments?: Array<{ start: number; end: number; text: string }>
+  full_text?: string
+  transcript?: string
 }
 
 interface SummaryResponse {
   summary: string
+}
+
+interface NotesResponse {
+  notes: string
 }
 
 export function VideoUploadForm() {
@@ -17,6 +23,7 @@ export function VideoUploadForm() {
   const [loading, setLoading] = useState(false)
   const [transcript, setTranscript] = useState("")
   const [summary, setSummary] = useState("")
+  const [notes, setNotes] = useState("")
   const [error, setError] = useState("")
   const [dragActive, setDragActive] = useState(false)
 
@@ -71,9 +78,9 @@ export function VideoUploadForm() {
     setError("")
     setTranscript("")
     setSummary("")
+    setNotes("")
 
     try {
-      // Get transcript
       const formData = new FormData()
       if (file) {
         formData.append("file", file)
@@ -91,9 +98,9 @@ export function VideoUploadForm() {
       }
 
       const transcriptData: TranscriptResponse = await transcriptResponse.json()
-      setTranscript(transcriptData.transcript)
+      const transcriptText = transcriptData.full_text || transcriptData.transcript || ""
+      setTranscript(transcriptText)
 
-      // Get summary
       const summaryResponse = await fetch("http://localhost:8000/api/get_summary", {
         method: "POST",
         body: formData,
@@ -105,7 +112,18 @@ export function VideoUploadForm() {
 
       const summaryData: SummaryResponse = await summaryResponse.json()
       setSummary(summaryData.summary)
-        // setSummary("Summary feature coming soon!")
+
+      const notesResponse = await fetch("http://localhost:8000/api/generate_notes", {
+        method: "POST",
+        body: formData,
+      })
+
+      if (!notesResponse.ok) {
+        throw new Error("Failed to generate notes")
+      }
+
+      const notesData: NotesResponse = await notesResponse.json()
+      setNotes(notesData.notes)
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred")
     } finally {
@@ -113,14 +131,26 @@ export function VideoUploadForm() {
     }
   }
 
-  const downloadTranscript = () => {
+  const downloadFile = (content: string, filename: string) => {
     const element = document.createElement("a")
-    const file = new Blob([transcript], { type: "text/plain" })
+    const file = new Blob([content], { type: "text/plain" })
     element.href = URL.createObjectURL(file)
-    element.download = `transcript-${Date.now()}.txt`
+    element.download = filename
     document.body.appendChild(element)
     element.click()
     document.body.removeChild(element)
+  }
+
+  const downloadTranscript = () => {
+    downloadFile(transcript, `transcript-${Date.now()}.txt`)
+  }
+
+  const downloadSummary = () => {
+    downloadFile(summary, `summary-${Date.now()}.txt`)
+  }
+
+  const downloadNotes = () => {
+    downloadFile(notes, `notes-${Date.now()}.md`)
   }
 
   return (
@@ -214,7 +244,7 @@ export function VideoUploadForm() {
       </form>
 
       {/* Results Section */}
-      {(transcript || summary) && (
+      {(transcript || summary || notes) && (
         <div className="space-y-6 animate-fadeIn">
           {/* Transcript Section */}
           {transcript && (
@@ -237,8 +267,37 @@ export function VideoUploadForm() {
           {/* Summary Section */}
           {summary && (
             <div className="bg-white/5 border border-white/10 rounded-xl p-6 space-y-3">
-              <h2 className="text-lg font-semibold text-white/90">Summary</h2>
-              <p className="text-white/70 leading-relaxed">{summary}</p>
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-white/90">Summary</h2>
+                <button
+                  onClick={downloadSummary}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30 transition-colors text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  aria-label="Download summary"
+                >
+                  <Download className="w-4 h-4" />
+                  Download
+                </button>
+              </div>
+              <p className="text-white/70 leading-relaxed max-h-64 overflow-y-auto pr-2">{summary}</p>
+            </div>
+          )}
+
+          {notes && (
+            <div className="bg-white/5 border border-white/10 rounded-xl p-6 space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-white/90">Notes</h2>
+                <button
+                  onClick={downloadNotes}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30 transition-colors text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  aria-label="Download notes"
+                >
+                  <Download className="w-4 h-4" />
+                  Download
+                </button>
+              </div>
+              <div className="text-white/70 leading-relaxed max-h-64 overflow-y-auto pr-2 prose prose-invert">
+                <div className="whitespace-pre-wrap">{notes}</div>
+              </div>
             </div>
           )}
         </div>
