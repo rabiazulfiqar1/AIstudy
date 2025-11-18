@@ -9,26 +9,25 @@ import hashlib
 import pickle #noqa
 from pathlib import Path
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
-from supabase import create_client, Client
 from typing import Optional, List, Dict
-from dotenv import load_dotenv
-import json
-from datetime import datetime
-from datetime import timedelta
+from app.core.config import config
+from fastapi import Depends
+from app.database.sql_engine import get_db
 
-load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '../../.env'))
+from sqlalchemy.ext.asyncio import AsyncSession
 
-HF_TOKEN = os.getenv("HF_TOKEN")
+from app.services.cache import (
+    save_to_cache,
+    load_from_cache,
+    clear_old_cache,
+    clear_cache_by_key,
+    get_all_cache_keys
+)
+
+HF_TOKEN = config.HF_TOKEN
 HF_SUMMARIZATION_MODEL = "facebook/bart-large-cnn"
 HF_NOTE_GENERATION_MODEL = "google/flan-t5-base"
-GROQ_API_KEY = os.getenv("GROQ_API_KEY") 
-
-# Supabase configuration
-SUPABASE_URL = os.getenv("NEXT_PUBLIC_SUPABASE_URL")
-SUPABASE_KEY = os.getenv("NEXT_PUBLIC_SUPABASE_ANON_KEY")
-
-# Initialize Supabase client
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+GROQ_API_KEY = config.GROQ_API_KEY 
 
 # Use the new router endpoint
 HF_SUMMARY_API = f"https://router.huggingface.co/hf-inference/models/{HF_SUMMARIZATION_MODEL}"
@@ -70,153 +69,6 @@ def get_cache_path(cache_key: str, cache_type: str) -> Path:
     cache_type: 'transcript', 'summary', 'notes', 'full'
     """
     return CACHE_DIR / f"{cache_key}_{cache_type}.pkl"
-
-
-# def save_to_cache_local(cache_key: str, cache_type: str, data: dict):
-#     """Save processed data to cache"""
-#     cache_path = get_cache_path(cache_key, cache_type)
-#     try:
-#         with open(cache_path, 'wb') as f:
-#             pickle.dump(data, f)
-#         print(f"✅ Cached to: {cache_path}")
-#     except Exception as e:
-#         print(f"❌ Cache save failed: {e}")
-        
-async def save_to_cache(cache_key: str, cache_type: str, data: dict):
-    """
-    Save processed data to Supabase cache
-    Uses upsert to handle both insert and update cases
-    """
-    try:
-        cache_entry = {
-            "cache_key": cache_key,
-            "cache_type": cache_type,
-            "data": json.dumps(data),  # Store as JSON string
-            "created_at": datetime.utcnow().isoformat(),
-            "updated_at": datetime.utcnow().isoformat()
-        }
-        
-        # Upsert: insert or update if exists
-        result = supabase.table("video_cache").upsert(
-            cache_entry,
-            on_conflict="cache_key,cache_type"
-        ).execute()
-        
-        print(f"✅ Cached to Supabase: {cache_key}_{cache_type}")
-        return result
-    except Exception as e:
-        print(f"❌ Supabase cache save failed: {e}")
-        # Don't raise - caching failure shouldn't break the main flow
-        return None
-
-
-# def load_from_cache_local(cache_key: str, cache_type: str) -> Optional[dict]:
-#     """Load processed data from cache"""
-#     cache_path = get_cache_path(cache_key, cache_type)
-    
-#     if cache_path.exists():
-#         try:
-#             with open(cache_path, 'rb') as f:
-#                 data = pickle.load(f)
-#             print(f"✅ Cache HIT: {cache_path}")
-#             return data
-#         except Exception as e:
-#             print(f"❌ Cache load failed: {e}")
-#             return None
-    
-#     print(f"❌ Cache MISS: {cache_path}")
-#     return None
-
-async def load_from_cache(cache_key: str, cache_type: str) -> Optional[dict]:
-    """Load processed data from Supabase cache"""
-    try:
-        result = supabase.table("video_cache").select("*").eq(
-            "cache_key", cache_key
-        ).eq(
-            "cache_type", cache_type
-        ).execute()
-        
-        if result.data and len(result.data) > 0:
-            cache_entry = result.data[0]
-            data = json.loads(cache_entry["data"])
-            
-            # Update last_accessed timestamp
-            supabase.table("video_cache").update({
-                "last_accessed": datetime.utcnow().isoformat()
-            }).eq("id", cache_entry["id"]).execute()
-            
-            print(f"✅ Cache HIT from Supabase: {cache_key}_{cache_type}")
-            return data
-        
-        print(f"❌ Cache MISS: {cache_key}_{cache_type}")
-        return None
-    except Exception as e:
-        print(f"❌ Supabase cache load failed: {e}")
-        return None
-
-# def clear_old_cache_local(max_age_days: int = 7):
-#     """Delete cache files older than max_age_days"""
-#     import time
-#     current_time = time.time()
-#     max_age_seconds = max_age_days * 86400 #24(hrs)*60(mins)*60(secs) = 86400 seconds in a day
-    
-#     deleted_count = 0
-#     for cache_file in CACHE_DIR.glob("*.pkl"):
-#         if current_time - cache_file.stat().st_mtime > max_age_seconds:
-#             cache_file.unlink()
-#             deleted_count += 1
-    
-#     if deleted_count > 0:
-#         print(f"🗑️ Deleted {deleted_count} old cache files")
-
-
-async def clear_old_cache(max_age_days: int = 7):
-    """Delete cache entries older than max_age_days"""
-    try:
-        cutoff_date = (datetime.utcnow() - timedelta(days=max_age_days)).isoformat()
-        
-        # Delete entries not accessed recently
-        result = supabase.table("video_cache").delete().lt(
-            "updated_at", cutoff_date
-        ).execute()
-        
-        deleted_count = len(result.data) if result.data else 0
-        
-        if deleted_count > 0:
-            print(f"🗑️ Deleted {deleted_count} old cache entries from Supabase")
-        
-        return deleted_count
-    except Exception as e:
-        print(f"❌ Failed to clear old cache: {e}")
-        return 0
-
-async def clear_cache_by_key(cache_key: str):
-    """Delete all cache entries for a specific key"""
-    try:
-        result = supabase.table("video_cache").delete().eq(
-            "cache_key", cache_key
-        ).execute()
-        
-        deleted_count = len(result.data) if result.data else 0
-        print(f"🗑️ Deleted {deleted_count} entries for key: {cache_key}")
-        return deleted_count
-    except Exception as e:
-        print(f"❌ Failed to clear cache by key: {e}")
-        return 0
-    
-async def get_all_cache_keys(limit: int = 100) -> List[str]:
-    """Get list of all unique cache keys"""
-    try:
-        result = supabase.table("video_cache").select("cache_key").limit(limit).execute()
-        
-        if result.data:
-            # Get unique keys
-            keys = list(set([entry["cache_key"] for entry in result.data]))
-            return keys
-        return []
-    except Exception as e:
-        print(f"❌ Failed to get cache keys: {e}")
-        return []
 
 # ============== EXISTING FUNCTIONS ==============
 
@@ -502,6 +354,7 @@ def format_timestamp(seconds: float) -> str:
 async def get_transcript(
     file: Optional[UploadFile] = File(None),
     link: Optional[str] = Form(None),
+    db: AsyncSession = Depends(get_db),
 ):
     """Get transcript with caching"""
     if not file and not link:
@@ -564,7 +417,8 @@ async def get_transcript(
 async def get_summary(
     file: Optional[UploadFile] = File(None),
     link: Optional[str] = Form(None),
-    max_length: int = Form(500)
+    max_length: int = Form(500),
+    db: AsyncSession = Depends(get_db),
 ):
     """Get summary with caching"""
     if not file and not link:
@@ -639,6 +493,7 @@ async def get_summary(
 async def process_video(
     file: Optional[UploadFile] = File(None),
     link: Optional[str] = Form(None),
+    db: AsyncSession = Depends(get_db),
 ):
     """Full processing with caching"""
     if not file and not link:
@@ -709,6 +564,7 @@ async def process_video(
 async def generate_notes(
     file: Optional[UploadFile] = File(None),
     link: Optional[str] = Form(None),
+    db: AsyncSession = Depends(get_db),
 ):
     """Generate notes with caching"""
     if not file and not link:
@@ -771,7 +627,10 @@ async def generate_notes(
 # ============== CACHE MANAGEMENT ENDPOINTS ==============
 
 @router.post("/clear_cache")
-async def clear_cache(max_age_days: int = 7):
+async def clear_cache(
+    max_age_days: int = 7,
+    db: AsyncSession = Depends(get_db), 
+):
     """Clear old cache entries from Supabase"""
     deleted_count = await clear_old_cache(max_age_days)
     return {
@@ -781,7 +640,10 @@ async def clear_cache(max_age_days: int = 7):
 
 
 @router.delete("/cache/{cache_key}")
-async def delete_cache_entry(cache_key: str):
+async def delete_cache_entry(
+    cache_key: str,
+    db: AsyncSession = Depends(get_db), 
+):
     """Delete all cache entries for a specific key"""
     deleted_count = await clear_cache_by_key(cache_key)
     return {
@@ -791,7 +653,10 @@ async def delete_cache_entry(cache_key: str):
 
 
 @router.get("/cache/keys")
-async def list_cache_keys(limit: int = 100):
+async def list_cache_keys (
+    limit: int = 100,
+    db: AsyncSession = Depends(get_db), 
+):
     """List all cache keys"""
     keys = await get_all_cache_keys(limit)
     return {
