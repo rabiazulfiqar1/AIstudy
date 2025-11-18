@@ -12,9 +12,9 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Mail, Lock } from "lucide-react"
+import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
 import { supabase } from "@/lib/supabaseClient"
-import { useRouter } from "next/navigation"
+import { useRouter } from 'next/navigation'
 
 export function LoginDialog({
   open,
@@ -25,6 +25,7 @@ export function LoginDialog({
 }) {
   const router = useRouter()
   const [submitting, setSubmitting] = React.useState(false)
+  const [showPassword, setShowPassword] = React.useState(false)
 
   async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
     
@@ -84,12 +85,24 @@ export function LoginDialog({
               <Input
                 id="login-password"
                 name="password"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 placeholder="••••••••"
                 required
-                className="pl-9"
+                className="pl-9 pr-9"
                 autoComplete="current-password"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground/60 hover:text-foreground transition-colors"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
             </div>
           </div>
 

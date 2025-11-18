@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
-import { Github, Mail, Phone, School, User, Lock, BookUser } from "lucide-react"
+import { Github, Mail, Phone, School, User, Lock, BookUser, Eye, EyeOff } from 'lucide-react'
 import { LoginDialog } from "@/components/login-dialog"
-import { useRouter } from "next/navigation"
+import { useRouter } from 'next/navigation'
 
 import { supabase } from "@/lib/supabaseClient"
 
@@ -16,6 +16,8 @@ export function SignupForm() {
   const [loginOpen, setLoginOpen] = React.useState(false)
   const [submitting, setSubmitting] = React.useState(false)
   const [passwordError, setPasswordError] = React.useState("")
+  const [showPassword, setShowPassword] = React.useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = React.useState(false)
 
   function getValue(form: FormData, key: string) {
     const val = form.get(key)
@@ -239,15 +241,27 @@ export function SignupForm() {
         <div className="grid gap-2">
           <Label htmlFor="password">Password</Label>
           <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground/60" />
+            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground/60" aria-hidden />
             <Input
               id="password"
               name="password"
-              type="password"
+              type={showPassword ? "text" : "password"}
               placeholder="••••••••"
-              className="pl-9"
+              className="pl-9 pr-9"
               required
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground/60 hover:text-foreground transition-colors"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? (
+                <EyeOff className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
+            </button>
           </div>
         </div>
 
@@ -258,13 +272,25 @@ export function SignupForm() {
             <Input
               id="confirmPassword"
               name="confirmPassword"
-              type="password"
+              type={showConfirmPassword ? "text" : "password"}
               placeholder="••••••••"
               required
-              className="pl-9"
+              className="pl-9 pr-9"
               autoComplete="new-password"
               minLength={8}
             />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground/60 hover:text-foreground transition-colors"
+              aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+            >
+              {showConfirmPassword ? (
+                <EyeOff className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
+            </button>
           </div>
         </div>
 
