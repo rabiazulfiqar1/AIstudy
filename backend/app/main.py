@@ -8,9 +8,11 @@ from app.database.sql_engine import engine
 #lifespan event to connect and disconnect the database when the app starts and stops: it's done before any request is handled
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await engine.connect()
+    # await engine.connect()
+    print("✅ Server starting up...")
     yield #lifespan function will pause here and let the app run to handle requests and when the app is shutting down, it will resume here
     await engine.dispose() #dispose of the engine, closing all connections in the pool
+    print("✅ Database connections closed")
 
 app = FastAPI(title="Study backend", lifespan=lifespan)
 

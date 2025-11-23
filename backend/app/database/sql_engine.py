@@ -5,10 +5,11 @@ from contextlib import asynccontextmanager
 
 engine = create_async_engine(
     config.DATABASE_URL,
-    echo=False, #logs all SQL statements executed
-    pool_pre_ping=True, # checks if connections are alive before using them
-    pool_size=10,
-    max_overflow=10 # number of extra connections allowed beyond pool_size. These are created on demand and discarded after use.
+    pool_size=10,          # Reduce from default (usually 5)
+    max_overflow=0,       # number of extra connections allowed beyond pool_size. These are created on demand and discarded after use.
+    pool_pre_ping=True,   # checks if connections are alive before using them
+    pool_recycle=3600,    # Recycle connections after 1 hour
+    echo=False            # Disable SQL logging for performance
 )
 
 AsyncSessionLocal = async_sessionmaker(

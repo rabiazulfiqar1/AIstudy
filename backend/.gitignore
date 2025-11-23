@@ -50,6 +50,3 @@ __pycache__/
 
 #cached files
 cache/
-
-#rs file due to token
-rs.py

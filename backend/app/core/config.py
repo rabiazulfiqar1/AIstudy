@@ -16,6 +16,7 @@ class Config(BaseSettings):
     HF_TOKEN: Optional[str] = None
     GROQ_API_KEY: Optional[str] = None
     GEMINI_API_KEY: Optional[str] = None
+    GITHUB_TOKEN: Optional[str] = None
     
     # Other Services
     MONGO_URI: Optional[str] = None
@@ -23,7 +24,11 @@ class Config(BaseSettings):
     
     # Models
     HF_SUMMARIZATION_MODEL: str = "facebook/bart-large-cnn"
-    HF_NOTE_GENERATION_MODEL: str = "google/flan-t5-base"    
+    HF_NOTE_GENERATION_MODEL: str = "google/flan-t5-base"  
+    
+    # Kaggle
+    KAGGLE_USERNAME: Optional[str] = None
+    KAGGLE_KEY: Optional[str] = None  
 
     # This is the modern syntax for Pydantic V2
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding='utf-8')
