@@ -5,10 +5,12 @@ import type {User} from "@supabase/supabase-js";
 import LightRays from "@/components/LightRays"
 import { FeatureCards } from "@/components/feature-cards"
 import Link from "next/link"
+import { ProfileDialogContent } from "@/components/profile-dialog-content"
 
 export default function Home() {
 
   const [user, setUser] = useState<User | null>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   useEffect(() => {
     const getUser = async () => {
@@ -59,68 +61,76 @@ export default function Home() {
       {/* 🌟 Navbar */}
       <header className="w-full">
         <nav className="absolute top-6 left-1/2 -translate-x-1/2 flex items-center justify-between w-[92%] max-w-5xl bg-white/10 backdrop-blur-md border border-white/10 rounded-full px-6 py-3">
-          <span className="font-semibold tracking-wide text-background">React Bits</span>
-          <div className="flex gap-6 text-background/80">
+          <span className="font-semibold tracking-wide text-white">React Bits</span>
+          <div className="flex gap-6 text-white/80 items-center">
             <a
               href="#"
-              className="hover:text-cyan-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md px-1"
+              className="hover:text-cyan-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md px-1"
             >
               Home
               <span className="sr-only">{"current page"}</span>
             </a>
             <a
               href="/notes"
-              className="hover:text-cyan-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md px-1"
+              className="hover:text-cyan-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md px-1"
             >
               Upload
               <span className="sr-only">{"current page"}</span>
             </a>
             <a
               href="#"
-              className="hover:text-cyan-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md px-1"
+              className="hover:text-cyan-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md px-1"
             >
               Features
             </a>
             {user ? (
-              <div className="bg-blue-600 text-white w-10 h-10 flex items-center justify-center rounded-full font-bold cursor-pointer">
-                {user.user_metadata?.display_name
-                  ? user.user_metadata.display_name.charAt(0).toUpperCase()
-                  : user.user_metadata?.name
-                  ? user.user_metadata.name.charAt(0).toUpperCase()
-                  : user.email?.charAt(0).toUpperCase() ?? ""}
-              </div>
+              <>
+                <Link
+                  href="/signout"
+                  className="hover:text-cyan-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md px-1"
+                >
+                  Sign Out
+                </Link>
+                <button
+                  onClick={() => setProfileOpen(true)}
+                  className="bg-cyan-600 text-white w-10 h-10 flex items-center justify-center rounded-full font-bold cursor-pointer hover:bg-cyan-700 transition-colors"
+                  aria-label="Open profile"
+                >
+                  {user.user_metadata?.display_name
+                    ? user.user_metadata.display_name.charAt(0).toUpperCase()
+                    : user.user_metadata?.name
+                    ? user.user_metadata.name.charAt(0).toUpperCase()
+                    : user.email?.charAt(0).toUpperCase() ?? ""}
+                </button>
+              </>
             ) : (
-              <Link
-                href="/signup"
-                className="hover:text-cyan-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md px-1"
-              >
-                Sign Up
-              </Link>
+              <>
+                <Link
+                  href="/signup"
+                  className="hover:text-cyan-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md px-1"
+                >
+                  Sign Up
+                </Link>
+                <Link
+                  href="/signout"
+                  className="hover:text-cyan-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md px-1"
+                >
+                  Sign Out
+                </Link>
+              </>
             )}
-            {/* <Link
-              href="/signup"
-              className="hover:text-cyan-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md px-1"
-            >
-              Sign Up
-            </Link> */}
-            <Link
-              href="/signout"
-              className="hover:text-cyan-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md px-1"
-            >
-              Sign Out
-            </Link>
           </div>
         </nav>
       </header>
 
       {/* ✨ Center Content */}
       <main className="w-full text-center px-6 mt-28 md:mt-32">
-        <h1 className="text-white/80 text-4xl md:text-6xl font-bold mb-5 leading-tight">
+        <h1 className="text-white/90 text-4xl md:text-6xl font-bold mb-5 leading-tight">
           May these lights guide you
           <br />
           on your learning path.
         </h1>
-        <p className="mx-auto max-w-2xl text-background/80 mb-8 leading-relaxed">
+        <p className="mx-auto max-w-2xl text-white/70 mb-8 leading-relaxed">
           Process videos into knowledge, plan your journey, track your progress, and build real projects alongside a
           helpful community.
         </p>
@@ -128,7 +138,7 @@ export default function Home() {
         <div className="flex justify-center gap-4">
           {/* 🌟 Primary Button */}
           <button
-            className="px-6 py-3 rounded-full bg-foreground text-background font-semibold transition-transform duration-200 hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="px-6 py-3 rounded-full bg-cyan-600 text-white font-semibold transition-transform duration-200 hover:scale-105 hover:bg-cyan-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
             aria-label="Get Started"
           >
             Get Started
@@ -136,7 +146,7 @@ export default function Home() {
 
           {/* ✨ Secondary Button */}
           <button
-            className="px-6 py-3 rounded-full border border-foreground/20 text-foreground font-semibold bg-background/40 backdrop-blur-sm transition-all duration-200 hover:bg-background/60 hover:border-foreground/30 hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="px-6 py-3 rounded-full border border-white/20 text-white font-semibold bg-white/5 backdrop-blur-sm transition-all duration-200 hover:bg-white/10 hover:border-white/30 hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
             aria-label="Learn More"
           >
             Learn More
@@ -148,6 +158,9 @@ export default function Home() {
           <FeatureCards />
         </section>
       </main>
+
+      {/* Profile Dialog */}
+      <ProfileDialogContent open={profileOpen} onOpenChange={setProfileOpen} user={user} />
     </div>
   )
 }

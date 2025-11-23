@@ -88,7 +88,7 @@ const features: Feature[] = [
     description: "Get real-world project ideas tailored to your topic and skill level.",
     points: ["Topic-based ideas", "Difficulty tiers", "Tech stacks", "Outcome-focused"],
     cta: "Find Projects",
-    href: "#projects",
+    href: "/proj_recommendations",
     Icon: icons.Rocket,
   },
   {

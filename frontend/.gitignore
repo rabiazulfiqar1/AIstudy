@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+recommendation-*.tsx
+kaggle_card.tsx
+kaggle/
