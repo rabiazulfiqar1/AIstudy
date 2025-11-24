@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Search } from "lucide-react"
+import { Search, ChevronDown } from "lucide-react"
 
 interface SearchFiltersProps {
   query: string
@@ -47,10 +47,7 @@ export function SearchFilters({
             onKeyPress={(e) => e.key === "Enter" && onSearch()}
             className="bg-[#0b1c24]/40 border-white/20 text-white placeholder:text-white/60 focus:ring-2 focus:ring-cyan-500"
           />
-          <Button
-            onClick={onSearch}
-            className="bg-cyan-500 text-black hover:bg-cyan-500/70 gap-2"
-          >
+          <Button onClick={onSearch} className="bg-cyan-500 text-black hover:bg-cyan-500/70 gap-2">
             <Search className="h-4 w-4" />
             Search
           </Button>
@@ -59,42 +56,46 @@ export function SearchFilters({
 
       {/* Filters */}
       <div className="grid md:grid-cols-3 gap-4">
-        {/* Difficulty Filter */}
         <div className="space-y-2">
           <Label htmlFor="difficulty" className="text-white">
             Difficulty
           </Label>
-          <select
-            id="difficulty"
-            value={difficulty}
-            onChange={(e) => setDifficulty(e.target.value)}
-            className="w-full px-3 py-2 bg-[#0b1c24]/40 border border-white/20 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-          >
-            {difficulties.map((d) => (
-              <option key={d} value={d}>
-                {d}
-              </option>
-            ))}
-          </select>
+          <div className="relative">
+            <select
+              id="difficulty"
+              value={difficulty}
+              onChange={(e) => setDifficulty(e.target.value)}
+              className="w-full px-4 py-2.5 bg-gradient-to-br from-[#0b1c24]/60 to-[#0b1c24]/40 border border-white/20 rounded-lg text-white appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all hover:border-cyan-500/50 hover:shadow-lg hover:shadow-cyan-500/10"
+            >
+              {difficulties.map((d) => (
+                <option key={d} value={d} className="bg-[#0b1c24] text-white">
+                  {d.charAt(0).toUpperCase() + d.slice(1)}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/60 pointer-events-none" />
+          </div>
         </div>
 
-        {/* Source Filter */}
         <div className="space-y-2">
           <Label htmlFor="source" className="text-white">
             Source
           </Label>
-          <select
-            id="source"
-            value={source}
-            onChange={(e) => setSource(e.target.value)}
-            className="w-full px-3 py-2 bg-[#0b1c24]/40 border border-white/20 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-          >
-            {sources.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
+          <div className="relative">
+            <select
+              id="source"
+              value={source}
+              onChange={(e) => setSource(e.target.value)}
+              className="w-full px-4 py-2.5 bg-gradient-to-br from-[#0b1c24]/60 to-[#0b1c24]/40 border border-white/20 rounded-lg text-white appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all hover:border-cyan-500/50 hover:shadow-lg hover:shadow-cyan-500/10"
+            >
+              {sources.map((s) => (
+                <option key={s} value={s} className="bg-[#0b1c24] text-white">
+                  {s === "All" ? s : s.replace(/_/g, " ")}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/60 pointer-events-none" />
+          </div>
         </div>
 
         {/* Search Type Toggle */}

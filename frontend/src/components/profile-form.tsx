@@ -75,6 +75,13 @@ export function ProfileForm({ initialData, onSubmit }: ProfileFormProps) {
     })
   }
 
+  const skillLevelOptions = [
+    { value: "beginner", label: "Beginner", description: "Just getting started" },
+    { value: "intermediate", label: "Intermediate", description: "Some experience" },
+    { value: "advanced", label: "Advanced", description: "Expert level" },
+  ]
+
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Bio */}
@@ -93,20 +100,28 @@ export function ProfileForm({ initialData, onSubmit }: ProfileFormProps) {
 
       {/* Skill Level */}
       <div>
-        <Label htmlFor="skillLevel" className="text-white">
-          Skill Level
-        </Label>
-        <select
-          id="skillLevel"
-          value={skillLevel}
-          onChange={(e) => setSkillLevel(e.target.value)}
-          className="mt-2 w-full px-3 py-2 bg-white/5 border border-white/10 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-        >
-          <option value="beginner">Beginner</option>
-          <option value="intermediate">Intermediate</option>
-          <option value="advanced">Advanced</option>
-        </select>
+        <Label className="text-white mb-3 block">Skill Level</Label>
+        <div className="flex flex-wrap gap-3">
+          {skillLevelOptions.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => setSkillLevel(option.value)}
+              className={`px-5 py-3 rounded-full transition-all duration-200 border ${
+                skillLevel === option.value
+                  ? "bg-cyan-500 text-white border-cyan-500 shadow-lg shadow-cyan-500/30"
+                  : "bg-white/5 text-white/70 border-white/10 hover:border-cyan-500/50 hover:bg-white/10"
+              }`}
+            >
+              <div className="text-left">
+                <div className="font-medium">{option.label}</div>
+                <div className="text-xs text-white/60">{option.description}</div>
+              </div>
+            </button>
+          ))}
+        </div>
       </div>
+
 
       {/* GitHub Username */}
       <div>

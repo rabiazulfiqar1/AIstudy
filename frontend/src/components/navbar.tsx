@@ -36,7 +36,7 @@ export function Navbar() {
                   "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors",
                   pathname === href
                     ? "bg-cyan-600 text-white"
-                    : "text-white/70 hover:bg-white/10 hover:text-white",
+                    : "text-white/70 hover:bg-white/10 hover:text-cyan-400",
                 )}
               >
                 <Icon className="h-4 w-4" />
@@ -50,7 +50,7 @@ export function Navbar() {
                 "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors",
                 pathname === "/profile" || pathname.startsWith("/profile/")
                   ? "bg-cyan-600 text-white"
-                  : "text-white/70 hover:bg-white/10 hover:text-white",
+                  : "text-white/70 hover:bg-white/10 hover:text-cyan-400",
               )}
               aria-label="Go to profile page"
             >

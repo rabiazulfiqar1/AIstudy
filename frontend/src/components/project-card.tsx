@@ -39,13 +39,13 @@ const getDifficultyColor = (diff: string) => {
               <CardTitle className="text-white line-clamp-2">{title}</CardTitle>
               <CardDescription className="text-white/60 text-xs mt-1">{source}</CardDescription>
             </div>
-
+{/* 
             {matchScore !== undefined && (
               <div className="text-right">
                 <div className="text-2xl font-bold text-cyan-400">{matchScore}%</div>
                 <p className="text-xs text-white/60">Match</p>
               </div>
-            )}
+            )} */}
           </div>
         </CardHeader>
 

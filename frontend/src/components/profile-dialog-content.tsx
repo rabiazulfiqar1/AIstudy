@@ -296,7 +296,7 @@ export function ProfileDialogContent({ open, onOpenChange, user }: ProfileDialog
                   <Button
                     onClick={handleCancel}
                     variant="outline"
-                    className="flex-1 border-white/20 text-white hover:bg-white/10"
+                    className="flex-1 bg-white/10 text-white hover:text-black"
                     disabled={isSaving}
                   >
                     Cancel
