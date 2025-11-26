@@ -21,6 +21,7 @@ async def initialize_database_objects():
     database_dir = Path(__file__).parent  # app/database/
     
     sql_files = [
+        ('functions.sql', 'Functions'),
         ('triggers.sql', 'Database Triggers'),
         ('views.sql', 'Database Views')
     ]
@@ -74,7 +75,23 @@ async def verify_database_objects():
     
     checks = []
     
-    async with engine.connect() as conn:   
+    async with engine.connect() as conn: 
+        # Check if procedures/functions exist
+        function_names = [
+            'get_user_activity_summary',
+            'clean_old_interactions',
+            'get_projects_needing_embeddings',
+        ]
+        for func_name in function_names:
+            result = await conn.execute(text("""
+                SELECT EXISTS (
+                    SELECT 1 FROM pg_proc p
+                    JOIN pg_namespace n ON p.pronamespace = n.oid
+                    WHERE n.nspname = 'public' AND p.proname = :func_name
+                )
+            """), {'func_name': func_name})
+            checks.append((f'{func_name}()', result.scalar()))
+          
         # Check if views exist
         view_names = ['popular_projects_by_difficulty', 'top_skill_combinations']
         for view_name in view_names:

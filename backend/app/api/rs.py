@@ -7,7 +7,7 @@ Enhanced with semantic embeddings using pgvector + HuggingFace
 
 from fastapi import APIRouter, HTTPException, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, insert, update, delete, func, or_
+from sqlalchemy import select, insert, update, delete, func, or_, text
 from typing import List, Optional
 from pydantic import BaseModel
 from datetime import datetime
@@ -136,6 +136,19 @@ class InteractionCreate(BaseModel):
     project_id: int
     interaction_type: str  # 'viewed', 'bookmarked', 'started', 'completed'
     rating: Optional[int] = None  # 1-5
+    
+class UserActivitySummary(BaseModel):
+    total_interactions: int
+    projects_viewed: int
+    projects_bookmarked: int
+    projects_started: int
+    projects_completed: int
+    avg_rating: Optional[float]
+    total_learning_hours: int
+    skills_count: int
+    most_active_category: Optional[str]
+    recent_activity_7d: int
+    completion_rate: float
 
 # ============================================
 # HELPER FUNCTIONS
@@ -1035,6 +1048,53 @@ async def get_user_bookmarks(
         "bookmarks": formatted_bookmarks,
         "total": len(formatted_bookmarks)
     }
+    
+@router.get("/users/{user_id}/activity-summary", response_model=UserActivitySummary)
+async def get_activity_summary(
+    user_id: str,
+    db: AsyncSession = Depends(get_db_session)
+):
+    """
+    Get comprehensive activity summary for the user.
+    
+    Includes:
+    - Interaction counts by type
+    - Average rating
+    - Total learning hours
+    - Skill statistics
+    - Recent activity
+    - Completion rate
+    """
+    try:
+        user_uuid = UUID(user_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid user ID format")
+    
+    result = await db.execute(
+        text("""
+            SELECT * FROM get_user_activity_summary(:user_id)
+        """),
+        {"user_id": user_uuid}
+    )
+    
+    row = result.first()
+    
+    if not row:
+        raise HTTPException(status_code=404, detail="User not found or no activity")
+    
+    return UserActivitySummary(
+        total_interactions=row.total_interactions,
+        projects_viewed=row.projects_viewed,
+        projects_bookmarked=row.projects_bookmarked,
+        projects_started=row.projects_started,
+        projects_completed=row.projects_completed,
+        avg_rating=float(row.avg_rating) if row.avg_rating else None,
+        total_learning_hours=row.total_learning_hours,
+        skills_count=row.skills_count,
+        most_active_category=row.most_active_category,
+        recent_activity_7d=row.recent_activity_7d,
+        completion_rate=float(row.completion_rate)
+    )
 
 # ------ KAGGLE-SPECIFIC ENDPOINTS ------
 

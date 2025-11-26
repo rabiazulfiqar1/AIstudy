@@ -1,6 +1,6 @@
-from fastapi import Depends, APIRouter
+from fastapi import Depends, APIRouter, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, insert, text, func
+from sqlalchemy import select, text, func
 from app.database.sql_engine import get_db_session
 from app.database.tables import (
     projects,
@@ -130,4 +130,64 @@ async def get_system_stats(db: AsyncSession = Depends(get_db_session)):
             "total_profiles": total_users
         },
         "embedding_model": "all-MiniLM-L6-v2"
+    }
+
+@router.post("/admin/cleanup-interactions")
+async def cleanup_old_interactions(
+    days_threshold: int = Query(180, ge=30, le=730),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """
+    Clean up old 'viewed' interactions to maintain performance.
+    
+    Admin endpoint to remove old view records while keeping
+    important interactions (bookmarks, started, completed).
+    
+    Requires admin authentication in production!
+    """
+    
+    result = await db.execute(
+        text("""
+            SELECT clean_old_interactions(:days)
+        """),
+        {"days": days_threshold}
+    )
+    
+    deleted_count = result.scalar()
+    
+    await db.commit()
+    
+    return {
+        "message": "Cleanup completed",
+        "deleted_interactions": deleted_count,
+        "days_threshold": days_threshold
+    }
+
+
+@router.get("/admin/projects-needing-embeddings")
+async def get_projects_needing_embeddings(
+    db: AsyncSession = Depends(get_db_session)
+):
+    """
+    Get list of projects that don't have embeddings yet.
+    
+    Useful for batch embedding generation.
+    """
+    
+    result = await db.execute(
+        text("""
+            SELECT * FROM get_projects_needing_embeddings()
+        """)
+    )
+    
+    projects = []
+    for row in result:
+        projects.append({
+            "project_id": row.project_id,
+            "embedding_text": row.embedding_text
+        })
+    
+    return {
+        "projects_without_embeddings": projects,
+        "count": len(projects)
     }
