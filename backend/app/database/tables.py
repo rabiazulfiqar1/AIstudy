@@ -153,6 +153,39 @@ Index("idx_project_skills_project", project_skills.c.project_id)
 Index("idx_project_skills_skill", project_skills.c.skill_id)
 
 # ============================================
+# EMBEDDINGS CACHE 
+# ============================================
+
+project_embeddings = sqlalchemy.Table(
+    "project_embeddings",
+    metadata,
+    Column("project_id", sqlalchemy.Integer, ForeignKey("projects.id", ondelete="CASCADE"), primary_key=True),
+    Column("embedding", Vector(384)),  # 384-dim for all-MiniLM-L6-v2
+    Column("model_version", TEXT, default="all-MiniLM-L6-v2"),
+    Column("created_at", TIMESTAMP(timezone=True), server_default=func.now()),
+    Column("updated_at", TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
+)
+
+# Add index for faster similarity search (IVFFlat or HNSW)
+# IVFFlat is good for < 1M vectors
+Index('idx_project_embeddings_vector', 
+      project_embeddings.c.embedding, 
+      postgresql_using='ivfflat',
+      postgresql_ops={'embedding': 'vector_cosine_ops'})
+
+# ============================================
+# USER ACTIVITY LOG
+# ============================================
+user_activity_log = sqlalchemy.Table(
+    "user_activity_log",
+    metadata,
+    Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    Column("user_id", UUID(as_uuid=True), ForeignKey("users.user_id", ondelete="CASCADE")),
+    Column("activity_type", TEXT, nullable=False),
+    Column("details", JSONB),
+    Column("created_at", TIMESTAMP(timezone=True), server_default=func.now())
+)
+# ============================================
 # USER PROJECT INTERACTIONS
 # ============================================
 
@@ -193,27 +226,6 @@ project_plans = sqlalchemy.Table(
 
 Index("idx_project_plans_user", project_plans.c.user_id)
 Index("idx_project_plans_project", project_plans.c.project_id)
-
-# ============================================
-# EMBEDDINGS CACHE 
-# ============================================
-
-project_embeddings = sqlalchemy.Table(
-    "project_embeddings",
-    metadata,
-    Column("project_id", sqlalchemy.Integer, ForeignKey("projects.id", ondelete="CASCADE"), primary_key=True),
-    Column("embedding", Vector(384)),  # 384-dim for all-MiniLM-L6-v2
-    Column("model_version", TEXT, default="all-MiniLM-L6-v2"),
-    Column("created_at", TIMESTAMP(timezone=True), server_default=func.now()),
-    Column("updated_at", TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
-)
-
-# Add index for faster similarity search (IVFFlat or HNSW)
-# IVFFlat is good for < 1M vectors
-Index('idx_project_embeddings_vector', 
-      project_embeddings.c.embedding, 
-      postgresql_using='ivfflat',
-      postgresql_ops={'embedding': 'vector_cosine_ops'})
 
 # ============================================
 # RECOMMENDATION FEEDBACK (Optional - for evaluation)
