@@ -9,8 +9,6 @@ from sqlalchemy import text
 from pathlib import Path
 from app.database.sql_engine import engine
 import asyncpg
-import os
-
 
 async def initialize_database_objects():
     """

@@ -26,7 +26,7 @@ from app.database.tables import (
 # For embeddings
 from sentence_transformers import SentenceTransformer
 
-from sqlalchemy import Table, Column, Integer, Numeric, Text, text
+from sqlalchemy import Table, Column, Integer, Numeric, Text
 from app.database.tables import metadata
 
 router = APIRouter()
@@ -731,59 +731,311 @@ async def get_project_detail(
             }
     
     return project_data
+    
+# ============================================
+# USER INTERACTION TRACKING ENDPOINTS
+# ============================================
 
-# ------ STATS ------
-
-@router.get("/admin/stats")
-async def get_system_stats(db: AsyncSession = Depends(get_db_session)):
-    """Get system statistics"""
+@router.post("/interactions")
+async def create_interaction(
+    user_id: str = Query(...),
+    project_id: int = Query(...),
+    interaction_type: str = Query(...),
+    rating: Optional[int] = Query(None, ge=1, le=5),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """
+    Create a new interaction for a user with a project
+    """
     
-    # Project counts
-    result = await db.execute(select(func.count()).select_from(projects))
-    total_projects = result.scalar()
+    # Validate interaction type
+    valid_types = ['viewed', 'bookmarked', 'started', 'completed']
+    if interaction_type not in valid_types:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Invalid interaction type. Must be one of: {', '.join(valid_types)}"
+        )
     
-    # Embeddings count
-    result = await db.execute(select(func.count()).select_from(project_embeddings))
-    total_embeddings = result.scalar()
-    
-    # By difficulty
-    result = await db.execute(
-        select(projects.c.difficulty, func.count())
-        .group_by(projects.c.difficulty)
+    # Check if interaction already exists
+    existing = await db.execute(
+        select(user_project_interactions)
+        .where(
+            user_project_interactions.c.user_id == user_id,
+            user_project_interactions.c.project_id == project_id,
+            user_project_interactions.c.interaction_type == interaction_type
+        )
     )
-    by_difficulty = {row[0]: row[1] for row in result}
-    # by source
-    result = await db.execute(
-        select(projects.c.source, func.count())
-        .group_by(projects.c.source)
-    )
-    by_source = {row[0]: row[1] for row in result}
     
-    # User profiles count
-    result = await db.execute(select(func.count()).select_from(user_profiles))
-    total_users = result.scalar()
+    if existing.first():
+        raise HTTPException(
+            status_code=400,
+            detail=f"Interaction of type '{interaction_type}' already exists for this project"
+        )
     
-    # Interactions count
-    result = await db.execute(select(func.count()).select_from(user_project_interactions))
-    total_interactions = result.scalar()
-    
-    return {
-        "projects": {
-            "total": total_projects,
-            "with_embeddings": total_embeddings,
-            "embedding_coverage": round(total_embeddings / total_projects * 100, 1) if total_projects > 0 else 0,
-            "by_difficulty": by_difficulty,
-            "by_source": by_source 
-        },
-        "users": {
-            "total_profiles": total_users
-        },
-        "interactions": {
-            "total": total_interactions
-        },
-        "embedding_model": "all-MiniLM-L6-v2"
+    # Insert new interaction
+    insert_values = {
+        'user_id': user_id,
+        'project_id': project_id,
+        'interaction_type': interaction_type
     }
     
+    if rating is not None:
+        insert_values['rating'] = rating
+    
+    result = await db.execute(
+        user_project_interactions.insert().values(**insert_values).returning(user_project_interactions.c.id)
+    )
+    
+    await db.commit()
+    
+    interaction_id = result.scalar()
+    
+    return {
+        "message": "Interaction created successfully",
+        "id": interaction_id,
+        "user_id": user_id,
+        "project_id": project_id,
+        "interaction_type": interaction_type,
+        "rating": rating
+    }
+
+@router.get("/interactions/{user_id}")
+async def get_user_interactions(
+    user_id: str,
+    interaction_type: Optional[str] = Query(None, description="Filter by type: viewed, bookmarked, started, completed"),
+    limit: int = Query(50, le=100),
+    offset: int = Query(0),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """
+    Get all interactions for a user with project details
+    """
+    
+    # Build query to join interactions with projects
+    query = (
+        select(
+            user_project_interactions.c.id,
+            user_project_interactions.c.project_id,
+            user_project_interactions.c.interaction_type,
+            user_project_interactions.c.rating,
+            user_project_interactions.c.created_at,
+            projects.c.title,
+            projects.c.description,
+            projects.c.difficulty,
+            projects.c.topics,
+            projects.c.repo_url,
+            projects.c.estimated_hours,
+            projects.c.source
+        )
+        .select_from(
+            user_project_interactions.join(
+                projects,
+                user_project_interactions.c.project_id == projects.c.id
+            )
+        )
+        .where(user_project_interactions.c.user_id == user_id)
+        .order_by(user_project_interactions.c.created_at.desc())
+    )
+    
+    # Apply optional filter
+    if interaction_type:
+        query = query.where(user_project_interactions.c.interaction_type == interaction_type)
+    
+    # Apply pagination
+    query = query.limit(limit).offset(offset)
+    
+    result = await db.execute(query)
+    interactions = result.fetchall()
+    
+    # Format response
+    formatted_interactions = []
+    for row in interactions:
+        formatted_interactions.append({
+            "id": row.id,
+            "project_id": row.project_id,
+            "project_title": row.title,
+            "project_description": row.description,
+            "difficulty": row.difficulty,
+            "topics": row.topics,
+            "repo_url": row.repo_url,
+            "estimated_hours": row.estimated_hours,
+            "source": row.source,
+            "interaction_type": row.interaction_type,
+            "rating": row.rating,
+            "timestamp": row.created_at.isoformat(),
+        })
+    
+    return {
+        "interactions": formatted_interactions,
+        "total": len(formatted_interactions),
+        "limit": limit,
+        "offset": offset
+    }
+
+
+@router.get("/interactions/{user_id}/stats")
+async def get_interaction_stats(
+    user_id: str,
+    db: AsyncSession = Depends(get_db_session)
+):
+    """
+    Get statistics about user's interactions
+    """
+    
+    # Count by interaction type
+    type_counts = await db.execute(
+        select(
+            user_project_interactions.c.interaction_type,
+            func.count(user_project_interactions.c.id).label('count')
+        )
+        .where(user_project_interactions.c.user_id == user_id)
+        .group_by(user_project_interactions.c.interaction_type)
+    )
+    
+    stats_by_type = {row.interaction_type: row.count for row in type_counts}
+    
+    # Average rating
+    avg_rating = await db.execute(
+        select(func.avg(user_project_interactions.c.rating))
+        .where(
+            user_project_interactions.c.user_id == user_id,
+            user_project_interactions.c.rating.isnot(None)
+        )
+    )
+    avg_rating_value = avg_rating.scalar()
+    
+    # Recent activity (last 30 days)
+    from sqlalchemy import text as sql_text
+    recent_count = await db.execute(
+        select(func.count(user_project_interactions.c.id))
+        .where(
+            user_project_interactions.c.user_id == user_id,
+            user_project_interactions.c.created_at >= func.now() - sql_text("INTERVAL '30 days'")
+        )
+    )
+    
+    return {
+        "total_interactions": sum(stats_by_type.values()),
+        "by_type": stats_by_type,
+        "average_rating": round(float(avg_rating_value), 2) if avg_rating_value else None,
+        "recent_activity_30d": recent_count.scalar()
+    }
+
+
+@router.put("/interactions/{interaction_id}")
+async def update_interaction(
+    interaction_id: int,
+    rating: Optional[int] = Query(None, ge=1, le=5),
+    interaction_type: Optional[str] = Query(None),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """
+    Update an existing interaction (e.g., add rating or change type)
+    """
+    
+    update_values = {}
+    if rating is not None:
+        update_values['rating'] = rating
+    if interaction_type is not None:
+        if interaction_type not in ['viewed', 'bookmarked', 'started', 'completed']:
+            raise HTTPException(status_code=400, detail="Invalid interaction type")
+        update_values['interaction_type'] = interaction_type
+    
+    if not update_values:
+        raise HTTPException(status_code=400, detail="No updates provided")
+    
+    result = await db.execute(
+        update(user_project_interactions)
+        .where(user_project_interactions.c.id == interaction_id)
+        .values(**update_values)
+    )
+    
+    if result.rowcount == 0:
+        raise HTTPException(status_code=404, detail="Interaction not found")
+    
+    return {"message": "Interaction updated successfully"}
+
+
+@router.delete("/interactions/{interaction_id}")
+async def delete_interaction(
+    interaction_id: int,
+    db: AsyncSession = Depends(get_db_session)
+):
+    """
+    Delete an interaction (e.g., remove bookmark)
+    """
+    
+    result = await db.execute(
+        delete(user_project_interactions)
+        .where(user_project_interactions.c.id == interaction_id)
+    )
+    
+    if result.rowcount == 0:
+        raise HTTPException(status_code=404, detail="Interaction not found")
+    
+    return {"message": "Interaction deleted successfully"}
+
+
+@router.get("/interactions/{user_id}/bookmarks")
+async def get_user_bookmarks(
+    user_id: str,
+    db: AsyncSession = Depends(get_db_session)
+):
+    """
+    Get all bookmarked projects for a user (convenience endpoint)
+    """
+    
+    query = (
+        select(
+            projects.c.id,
+            projects.c.title,
+            projects.c.description,
+            projects.c.difficulty,
+            projects.c.topics,
+            projects.c.repo_url,
+            projects.c.estimated_hours,
+            projects.c.source,
+            projects.c.stars,
+            projects.c.language,
+            user_project_interactions.c.created_at
+        )
+        .select_from(
+            user_project_interactions.join(
+                projects,
+                user_project_interactions.c.project_id == projects.c.id
+            )
+        )
+        .where(
+            user_project_interactions.c.user_id == user_id,
+            user_project_interactions.c.interaction_type == 'bookmarked'
+        )
+        .order_by(user_project_interactions.c.created_at.desc())
+    )
+    
+    result = await db.execute(query)
+    bookmarks = result.fetchall()
+    
+    formatted_bookmarks = []
+    for row in bookmarks:
+        formatted_bookmarks.append({
+            "id": row.id,
+            "title": row.title,
+            "description": row.description,
+            "repo_url": row.repo_url,
+            "difficulty": row.difficulty,
+            "topics": row.topics,
+            "estimated_hours": row.estimated_hours,
+            "source": row.source,
+            "stars": row.stars,
+            "language": row.language,
+            "bookmarked_at": row.created_at.isoformat()
+        })
+    
+    return {
+        "bookmarks": formatted_bookmarks,
+        "total": len(formatted_bookmarks)
+    }
+
 # ------ KAGGLE-SPECIFIC ENDPOINTS ------
 
 @router.get("/kaggle/competitions")
