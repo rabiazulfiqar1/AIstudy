@@ -8,6 +8,8 @@ Loads and executes SQL procedures, triggers, and views on startup.
 from sqlalchemy import text
 from pathlib import Path
 from app.database.sql_engine import engine
+import asyncpg
+import os
 
 
 async def initialize_database_objects():
@@ -25,23 +27,43 @@ async def initialize_database_objects():
         ('views.sql', 'Database Views')
     ]
     
-    async with engine.begin() as conn:
-        for filename, description in sql_files:
-            sql_path = database_dir / filename
-            
-            if not sql_path.exists():
-                print(f"⚠️  Warning: {filename} not found at {sql_path}")
-                continue
-            
-            try:
-                with open(sql_path, 'r') as f:
-                    sql_content = f.read()
-                    await conn.execute(text(sql_content))
-                    print(f"✅ Loaded {description} from {filename}")
+    try:
+        # Build asyncpg connection from SQLAlchemy URL components
+        url = engine.url
+        conn = await asyncpg.connect(
+            host=url.host or 'localhost',
+            port=url.port or 5432,
+            user=url.username,
+            password=url.password,
+            database=url.database
+        )
+        
+        try:
+            for filename, description in sql_files:
+                sql_path = database_dir / filename
+                
+                if not sql_path.exists():
+                    print(f"⚠️  Warning: {filename} not found at {sql_path}")
+                    continue
+                
+                try:
+                    with open(sql_path, 'r') as f:
+                        sql_content = f.read()
                     
-            except Exception as e:
-                print(f"❌ Error loading {filename}: {e}")
-                # Don't raise - allow app to continue even if SQL objects fail
+                    # asyncpg can execute multiple statements at once
+                    await conn.execute(sql_content)
+                    print(f"✅ Loaded {description} from {filename}")
+                        
+                except Exception as e:
+                    print(f"❌ Error loading {filename}: {e}")
+                    # Don't raise - allow app to continue even if SQL objects fail
+        
+        finally:
+            await conn.close()
+            
+    except Exception as e:
+        print(f"⚠️  Database initialization warning: {e}")
+        # Don't crash the app if initialization fails
     
     print("✅ Database initialization complete")
 
