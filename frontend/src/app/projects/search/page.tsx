@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Navbar } from "@/components/navbar"
 import { SearchFilters } from "@/components/search-filters"
 import { ProjectCard } from "@/components/project-card"
@@ -17,19 +18,57 @@ interface Project {
   match_score?: number 
 }
 
-
 export default function SearchPage() {
-  const [query, setQuery] = useState("")
-  const [difficulty, setDifficulty] = useState("All")
-  const [source, setSource] = useState("All")
-  const [useSemanticSearch, setUseSemanticSearch] = useState(false)
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  
+  // Initialize state from URL params
+  const [query, setQuery] = useState(searchParams.get("q") || "")
+  const [difficulty, setDifficulty] = useState(searchParams.get("difficulty") || "All")
+  const [source, setSource] = useState(searchParams.get("source") || "All")
+  const [useSemanticSearch, setUseSemanticSearch] = useState(searchParams.get("semantic") === "true")
   const [searchResults, setSearchResults] = useState<Project[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [error, setError] = useState("")
 
+  // Update URL when search params change
+  const updateURL = (params: Record<string, string>) => {
+    const newParams = new URLSearchParams(searchParams.toString())
+    
+    Object.entries(params).forEach(([key, value]) => {
+      if (value && value !== "All") {
+        newParams.set(key, value)
+      } else {
+        newParams.delete(key)
+      }
+    })
+    
+    router.push(`/projects/search?${newParams.toString()}`, { scroll: false })
+  }
+
+  // Perform search on mount if URL has params
+  useEffect(() => {
+    const hasParams = searchParams.get("q") || 
+                      searchParams.get("difficulty") || 
+                      searchParams.get("source")
+    
+    if (hasParams) {
+      handleSearch()
+    }
+  }, []) // Only run on mount
+
   const handleSearch = async () => {
     setIsSearching(true)
     setError("")
+    
+    // Update URL with current search params
+    updateURL({
+      q: query,
+      difficulty: difficulty,
+      source: source,
+      semantic: useSemanticSearch.toString()
+    })
+
     console.log("[v0] Searching with params:", {
       query,
       difficulty,
@@ -38,7 +77,7 @@ export default function SearchPage() {
     })
 
     try {
-      const results: Project[]  = await searchProjects(
+      const results: Project[] = await searchProjects(
         query || undefined,
         difficulty !== "All" ? difficulty : undefined,
         source !== "All" ? source : undefined,
