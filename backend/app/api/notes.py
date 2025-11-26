@@ -14,6 +14,8 @@ from app.core.config import config
 from fastapi import Depends
 from app.database.sql_engine import get_db
 
+import re
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.cache import (
@@ -53,14 +55,56 @@ router = APIRouter()
 
 # ============== CACHING UTILITIES ==============
 
+#  - `[^&\n?#]` - Match any character that is **NOT**:
+#   - `&` - URL parameter separator
+#   - `\n` - Newline
+#   - `?` - Query string start
+#   - `#` - Fragment/anchor
+# - `+` - Match **one or more** of these characters
+
+# So it captures everything after the YouTube URL pattern **until** it hits a parameter, query, or fragment.
+
+# URL: https://youtube.com/watch?v=dQw4w9WgXcQ&t=10s&list=xyz
+#                                  └─────────┘
+#                                  This gets captured
+#                                            ↑
+#                         Stops here at &
+
+
+def extract_youtube_id(url: str) -> str | None:
+    """Extract YouTube video ID from various URL formats"""
+    patterns = [
+        r'(?:youtube\.com\/watch\?v=)([^&\n?#]+)',
+        r'(?:youtu\.be\/)([^&\n?#]+)',
+        r'(?:youtube\.com\/embed\/)([^&\n?#]+)',
+        r'(?:youtube\.com\/v\/)([^&\n?#]+)',
+        r'(?:youtube\.com\/shorts\/)([^&\n?#]+)'
+    ]
+    
+    for pattern in patterns:
+        match = re.search(pattern, url)
+        if match:
+            return match.group(1)
+    return None
+
+
 def get_file_hash(file_content: bytes) -> str:
     """Generate hash from file content"""
     return hashlib.sha256(file_content).hexdigest()
 
 
 def get_link_hash(url: str) -> str:
-    """Generate hash from URL"""
-    return hashlib.sha256(url.encode()).hexdigest()
+    """Generate hash from URL, using YouTube video ID if applicable"""
+    # Try to extract YouTube video ID first
+    youtube_id = extract_youtube_id(url)
+    if youtube_id:
+        # Use the video ID directly for consistent caching across URL formats
+        return hashlib.sha256(youtube_id.encode()).hexdigest()
+    else:
+        # For non-YouTube URLs, normalize and hash
+        # Remove common variations (trailing slash, http vs https)
+        normalized_url = url.strip().rstrip('/').replace('http://', 'https://')
+        return hashlib.sha256(normalized_url.encode()).hexdigest()
 
 
 def get_cache_path(cache_key: str, cache_type: str) -> Path:
@@ -431,62 +475,63 @@ async def get_summary(
     else:
         cache_key = get_link_hash(link)
     
-    # Check cache
+    # Check cache for summary
     cached = await load_from_cache(cache_key, 'summary')
     if cached:
         return {**cached, "from_cache": True}
     
-    video_path = None
-    audio_path = None
-    
-    try:
-        if file:
-            suffix = Path(file.filename).suffix if file.filename else ".tmp"
-            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-                tmp.write(file_content)
-                video_path = tmp.name
+    # Check if transcript is cached BEFORE downloading/extracting
+    transcript_cached = await load_from_cache(cache_key, 'transcript')
+    if transcript_cached:
+        segments = transcript_cached['segments']
+        full_text = transcript_cached['full_text']
+    else:
+        # Only download and extract audio if transcript not cached
+        video_path = None
+        audio_path = None
+        
+        try:
+            if file:
+                suffix = Path(file.filename).suffix if file.filename else ".tmp"
+                with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+                    tmp.write(file_content)
+                    video_path = tmp.name
+                
+                if suffix.lower() in ['.mp4', '.avi', '.mov', '.mkv', '.webm']:
+                    audio_path = extract_audio_from_video(video_path)
+                else:
+                    audio_path = video_path
             
-            if suffix.lower() in ['.mp4', '.avi', '.mov', '.mkv', '.webm']:
+            elif link:
+                video_path = download_video_from_link(link)
                 audio_path = extract_audio_from_video(video_path)
-            else:
-                audio_path = video_path
-        
-        elif link:
-            video_path = download_video_from_link(link)
-            audio_path = extract_audio_from_video(video_path)
-        
-        # Check if transcript is cached
-        transcript_cached = await load_from_cache(cache_key, 'transcript')
-        if transcript_cached:
-            segments = transcript_cached['segments']
-            full_text = transcript_cached['full_text']
-        else:
+            
             segments = generate_transcript_with_timestamps(audio_path)
             full_text = segments_to_full_text(segments)
         
-        try:
-            summary = generate_summary_hf(full_text, max_summary_length=max_length)
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            raise HTTPException(status_code=500, detail=f"Summary generation failed: {str(e)}")
-        
-        result = {
-            "summary": summary,
-            "original_length": len(full_text),
-            "summary_length": len(summary),
-            "duration": segments[-1]["end"] if segments else 0
-        }
-        
-        await save_to_cache(cache_key, 'summary', result)
-        
-        return {**result, "from_cache": False}
+        finally:
+            if video_path and os.path.exists(video_path):
+                os.remove(video_path)
+            if audio_path and audio_path != video_path and os.path.exists(audio_path):
+                os.remove(audio_path)
     
-    finally:
-        if video_path and os.path.exists(video_path):
-            os.remove(video_path)
-        if audio_path and audio_path != video_path and os.path.exists(audio_path):
-            os.remove(audio_path)
+    try:
+        summary = generate_summary_hf(full_text, max_summary_length=max_length)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Summary generation failed: {str(e)}")
+    
+    result = {
+        "summary": summary,
+        "original_length": len(full_text),
+        "summary_length": len(summary),
+        "duration": segments[-1]["end"] if segments else 0
+    }
+    
+    await save_to_cache(cache_key, 'summary', result)
+    
+    return {**result, "from_cache": False}
 
 
 @router.post("/process_video")

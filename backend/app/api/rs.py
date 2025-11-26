@@ -44,6 +44,13 @@ class EmbeddingService:
             print("✅ Loaded embedding model: all-MiniLM-L6-v2")
         return cls._instance
     
+    # Inside .encode(), SentenceTransformer does:
+    # Tokenize your text
+    # Run MiniLM transformer (gets token embeddings)
+    # Apply mean pooling over token embeddings
+    # (Optionally) normalize
+    # Return a final vector of size 384
+    
     def encode(self, text: str) -> List[float]:
         """Generate embedding for text"""
         embedding = self._model.encode(text, normalize_embeddings=True)
